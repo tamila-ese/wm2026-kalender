@@ -23,7 +23,7 @@ jobs:
 
       - name: ICS generieren
         env:
-          API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+          FOOTBALL_DATA_KEY: ${{ secrets.FOOTBALL_DATA_KEY }}
         run: python wm2026_calendar.py
 
       - name: Aenderungen committen
