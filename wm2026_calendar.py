@@ -27,64 +27,26 @@ CAL_NAME = "FIFA WM 2026"
 DURATION = 120      # Minuten pro Spiel-Event
 
 # Englisch (football-data.org) -> Deutsch. Deckt alle 48 Teilnehmer ab.
-# Was hier nicht drin steht (z.B. neue Platzhalter), bleibt unveraendert.
 DE_NAMES = {
-    "Mexico": "Mexiko",
-    "South Africa": "Suedafrika",
-    "South Korea": "Suedkorea",
-    "Czechia": "Tschechien",
-    "Canada": "Kanada",
-    "Bosnia-Herzegovina": "Bosnien-Herzegowina",
-    "United States": "USA",
-    "Paraguay": "Paraguay",
-    "Qatar": "Katar",
-    "Switzerland": "Schweiz",
-    "Brazil": "Brasilien",
-    "Morocco": "Marokko",
-    "Haiti": "Haiti",
-    "Scotland": "Schottland",
-    "Australia": "Australien",
-    "Turkey": "Tuerkei",
-    "Germany": "Deutschland",
-    "Curaçao": "Curacao",
-    "Netherlands": "Niederlande",
-    "Japan": "Japan",
-    "Ivory Coast": "Elfenbeinkueste",
-    "Ecuador": "Ecuador",
-    "Sweden": "Schweden",
-    "Tunisia": "Tunesien",
-    "Spain": "Spanien",
-    "Cape Verde Islands": "Kap Verde",
-    "Belgium": "Belgien",
-    "Egypt": "Aegypten",
-    "Saudi Arabia": "Saudi-Arabien",
-    "Uruguay": "Uruguay",
-    "Iran": "Iran",
-    "New Zealand": "Neuseeland",
-    "France": "Frankreich",
-    "Senegal": "Senegal",
-    "Iraq": "Irak",
-    "Norway": "Norwegen",
-    "Argentina": "Argentinien",
-    "Algeria": "Algerien",
-    "Austria": "Oesterreich",
-    "Jordan": "Jordanien",
-    "Portugal": "Portugal",
-    "Congo DR": "DR Kongo",
-    "England": "England",
-    "Croatia": "Kroatien",
-    "Ghana": "Ghana",
-    "Panama": "Panama",
-    "Uzbekistan": "Usbekistan",
-    "Colombia": "Kolumbien",
-    "Italy": "Italien",
-    "Nigeria": "Nigeria",
-    "Denmark": "Daenemark",
-    "Poland": "Polen",
-    "Wales": "Wales",
-    "Cameroon": "Kamerun",
-    "Serbia": "Serbien",
-    "Ukraine": "Ukraine",
+    "Mexico": "Mexiko", "South Africa": "Suedafrika", "South Korea": "Suedkorea",
+    "Czechia": "Tschechien", "Canada": "Kanada", "Bosnia-Herzegovina": "Bosnien-Herzegowina",
+    "United States": "USA", "Paraguay": "Paraguay", "Qatar": "Katar",
+    "Switzerland": "Schweiz", "Brazil": "Brasilien", "Morocco": "Marokko",
+    "Haiti": "Haiti", "Scotland": "Schottland", "Australia": "Australien",
+    "Turkey": "Tuerkei", "Germany": "Deutschland", "Curaçao": "Curacao",
+    "Netherlands": "Niederlande", "Japan": "Japan", "Ivory Coast": "Elfenbeinkueste",
+    "Ecuador": "Ecuador", "Sweden": "Schweden", "Tunisia": "Tunesien",
+    "Spain": "Spanien", "Cape Verde Islands": "Kap Verde", "Belgium": "Belgien",
+    "Egypt": "Aegypten", "Saudi Arabia": "Saudi-Arabien", "Uruguay": "Uruguay",
+    "Iran": "Iran", "New Zealand": "Neuseeland", "France": "Frankreich",
+    "Senegal": "Senegal", "Iraq": "Irak", "Norway": "Norwegen",
+    "Argentina": "Argentinien", "Algeria": "Algerien", "Austria": "Oesterreich",
+    "Jordan": "Jordanien", "Portugal": "Portugal", "Congo DR": "DR Kongo",
+    "England": "England", "Croatia": "Kroatien", "Ghana": "Ghana",
+    "Panama": "Panama", "Uzbekistan": "Usbekistan", "Colombia": "Kolumbien",
+    "Italy": "Italien", "Nigeria": "Nigeria", "Denmark": "Daenemark",
+    "Poland": "Polen", "Wales": "Wales", "Cameroon": "Kamerun",
+    "Serbia": "Serbien", "Ukraine": "Ukraine",
 }
 
 # Stage/Group auf Deutsch
@@ -185,14 +147,14 @@ def fmt(d):
 
 def team_name(side):
     if not isinstance(side, dict):
-        return "TBD"
+        return "TBD", ""
     for key in ("name", "shortName", "tla"):
         v = (side.get(key) or "").strip()
         if v:
             de = DE_NAMES.get(v, v)        # uebersetzen, sonst Original
             flag = DE_FLAGS.get(de, "")    # Flagge davor, falls bekannt
-            return f"{flag} {de}".strip()
-    return "TBD"
+            return de, flag
+    return "TBD", ""
 
 
 def stage_de(raw):
@@ -202,11 +164,25 @@ def stage_de(raw):
 def group_de(raw):
     if not raw:
         return ""
-    # GROUP_A -> Gruppe A
     parts = str(raw).split("_")
     if len(parts) == 2 and parts[0] == "GROUP":
         return f"Gruppe {parts[1]}"
     return str(raw).replace("_", " ").title()
+
+
+def get_score(m):
+    """Gibt (home_goals, away_goals) zurueck, wenn das Spiel beendet ist, sonst None.
+    Robust gegen v4-Feldnamen 'home'/'away' und alt 'homeTeam'/'awayTeam'."""
+    status = str(m.get("status", "")).upper()
+    if status != "FINISHED":
+        return None
+    score = m.get("score") or {}
+    ft = score.get("fullTime") or {}
+    h = ft.get("home", ft.get("homeTeam"))
+    a = ft.get("away", ft.get("awayTeam"))
+    if h is None or a is None:
+        return None
+    return h, a
 
 
 # ---------------------------------------------------------------------------
@@ -233,12 +209,22 @@ def build_ics(matches):
         start = to_utc_stamp(iso)
         end   = start + dt.timedelta(minutes=DURATION)
 
-        home  = team_name(m.get("homeTeam"))
-        away  = team_name(m.get("awayTeam"))
+        home, hflag = team_name(m.get("homeTeam"))
+        away, aflag = team_name(m.get("awayTeam"))
         stage = stage_de(m.get("stage", ""))
         group = group_de(m.get("group", ""))
+        venue = (m.get("venue") or "").strip()
 
-        title = f"{home} - {away}"
+        # Mittelteil: Ergebnis wenn beendet, sonst "-"
+        score = get_score(m)
+        if score is not None:
+            middle = f"{score[0]}:{score[1]}"
+        else:
+            middle = "-"
+
+        home_part = f"{hflag} {home}".strip()
+        away_part = f"{aflag} {away}".strip()
+        title = f"{home_part} {middle} {away_part}"
         tag   = group or stage
         if tag:
             title += f" ({tag})"
@@ -246,7 +232,7 @@ def build_ics(matches):
         mid = m.get("id") or f"{iso}{home}{away}"
         uid = f"wm2026-{mid}@wm-cal"
 
-        desc = " | ".join([p for p in (stage, group) if p])
+        desc = " | ".join([p for p in (stage, group, venue) if p])
 
         lines += [
             "BEGIN:VEVENT",
@@ -256,6 +242,8 @@ def build_ics(matches):
             f"DTEND:{fmt(end)}",
             fold(f"SUMMARY:{ics_escape(title)}"),
         ]
+        if venue:
+            lines.append(fold(f"LOCATION:{ics_escape(venue)}"))
         if desc:
             lines.append(fold(f"DESCRIPTION:{ics_escape(desc)}"))
         lines += [
