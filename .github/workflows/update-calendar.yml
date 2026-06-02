@@ -1,9 +1,11 @@
 name: WM 2026 Kalender aktualisieren
 
-# Laeuft taeglich um 03:00 UTC + manuell ausloesbar (Knopf auf GitHub)
+# Laeuft alle 15 Minuten + manuell ausloesbar (Knopf auf GitHub).
+# Hinweis: GitHubs Cron ist nicht minutengenau und kann bei hoher Last
+# etwas spaeter laufen. Das ist normal und kein Fehler.
 on:
   schedule:
-    - cron: "0 3 * * *"
+    - cron: "*/15 * * * *"
   workflow_dispatch:
 
 permissions:
