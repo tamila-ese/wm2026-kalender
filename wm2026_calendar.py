@@ -3,13 +3,8 @@
 WM 2026 -> Google-abonnierbarer Kalender (wm2026.ics)
 Gratis-Variante via GitHub (kein eigenes Hosting noetig).
 
-Datenquelle: football-data.org
-  Kostenloser Account -> API-Key (kostenlos, "Free. Forever." fuer Top-Wettbewerbe).
-  WM 2026 ist im Gratis-Tarif enthalten. Wettbewerbscode: WC.
-  Rate-Limit Gratis: 10 Anfragen pro Minute (kein Tageslimit) -> mehr als genug.
-
-Der API-Key wird aus der Umgebungsvariable FOOTBALL_DATA_KEY gelesen
-(in GitHub als "Secret" hinterlegt, damit er nicht oeffentlich im Code steht).
+Datenquelle: football-data.org (kostenloser API-Key, WM gratis, Code: WC).
+Der API-Key kommt aus der Umgebungsvariable FOOTBALL_DATA_KEY (GitHub Secret).
 
 Lauf:  python wm2026_calendar.py
 Out:   wm2026.ics
@@ -31,9 +26,96 @@ OUTPUT   = "wm2026.ics"
 CAL_NAME = "FIFA WM 2026"
 DURATION = 120      # Minuten pro Spiel-Event
 
-# Schweizer Spiele speziell kennzeichnen.
-HIGHLIGHT_NEEDLES = ["switzerland", "schweiz", "suisse", "svizzera"]
-HIGHLIGHT_EMOJI   = "\U0001F1E8\U0001F1ED"  # 🇨🇭
+# Englisch (football-data.org) -> Deutsch. Deckt alle 48 Teilnehmer ab.
+# Was hier nicht drin steht (z.B. neue Platzhalter), bleibt unveraendert.
+DE_NAMES = {
+    "Mexico": "Mexiko",
+    "South Africa": "Suedafrika",
+    "South Korea": "Suedkorea",
+    "Czechia": "Tschechien",
+    "Canada": "Kanada",
+    "Bosnia-Herzegovina": "Bosnien-Herzegowina",
+    "United States": "USA",
+    "Paraguay": "Paraguay",
+    "Qatar": "Katar",
+    "Switzerland": "Schweiz",
+    "Brazil": "Brasilien",
+    "Morocco": "Marokko",
+    "Haiti": "Haiti",
+    "Scotland": "Schottland",
+    "Australia": "Australien",
+    "Turkey": "Tuerkei",
+    "Germany": "Deutschland",
+    "Curaçao": "Curacao",
+    "Netherlands": "Niederlande",
+    "Japan": "Japan",
+    "Ivory Coast": "Elfenbeinkueste",
+    "Ecuador": "Ecuador",
+    "Sweden": "Schweden",
+    "Tunisia": "Tunesien",
+    "Spain": "Spanien",
+    "Cape Verde Islands": "Kap Verde",
+    "Belgium": "Belgien",
+    "Egypt": "Aegypten",
+    "Saudi Arabia": "Saudi-Arabien",
+    "Uruguay": "Uruguay",
+    "Iran": "Iran",
+    "New Zealand": "Neuseeland",
+    "France": "Frankreich",
+    "Senegal": "Senegal",
+    "Iraq": "Irak",
+    "Norway": "Norwegen",
+    "Argentina": "Argentinien",
+    "Algeria": "Algerien",
+    "Austria": "Oesterreich",
+    "Jordan": "Jordanien",
+    "Portugal": "Portugal",
+    "Congo DR": "DR Kongo",
+    "England": "England",
+    "Croatia": "Kroatien",
+    "Ghana": "Ghana",
+    "Panama": "Panama",
+    "Uzbekistan": "Usbekistan",
+    "Colombia": "Kolumbien",
+    "Italy": "Italien",
+    "Nigeria": "Nigeria",
+    "Denmark": "Daenemark",
+    "Poland": "Polen",
+    "Wales": "Wales",
+    "Cameroon": "Kamerun",
+    "Serbia": "Serbien",
+    "Ukraine": "Ukraine",
+}
+
+# Stage/Group auf Deutsch
+DE_STAGE = {
+    "GROUP_STAGE": "Gruppenphase",
+    "LAST_32": "Sechzehntelfinale",
+    "LAST_16": "Achtelfinale",
+    "ROUND_OF_16": "Achtelfinale",
+    "QUARTER_FINALS": "Viertelfinale",
+    "SEMI_FINALS": "Halbfinale",
+    "THIRD_PLACE": "Spiel um Platz 3",
+    "FINAL": "Final",
+}
+
+# Flaggen-Emoji pro Team (deutscher Name -> Flagge).
+DE_FLAGS = {
+    "Mexiko": "🇲🇽", "Suedafrika": "🇿🇦", "Suedkorea": "🇰🇷", "Tschechien": "🇨🇿",
+    "Kanada": "🇨🇦", "Bosnien-Herzegowina": "🇧🇦", "USA": "🇺🇸", "Paraguay": "🇵🇾",
+    "Katar": "🇶🇦", "Schweiz": "🇨🇭", "Brasilien": "🇧🇷", "Marokko": "🇲🇦",
+    "Haiti": "🇭🇹", "Schottland": "🏴󠁧󠁢󠁳󠁣󠁴󠁿", "Australien": "🇦🇺", "Tuerkei": "🇹🇷",
+    "Deutschland": "🇩🇪", "Curacao": "🇨🇼", "Niederlande": "🇳🇱", "Japan": "🇯🇵",
+    "Elfenbeinkueste": "🇨🇮", "Ecuador": "🇪🇨", "Schweden": "🇸🇪", "Tunesien": "🇹🇳",
+    "Spanien": "🇪🇸", "Kap Verde": "🇨🇻", "Belgien": "🇧🇪", "Aegypten": "🇪🇬",
+    "Saudi-Arabien": "🇸🇦", "Uruguay": "🇺🇾", "Iran": "🇮🇷", "Neuseeland": "🇳🇿",
+    "Frankreich": "🇫🇷", "Senegal": "🇸🇳", "Irak": "🇮🇶", "Norwegen": "🇳🇴",
+    "Argentinien": "🇦🇷", "Algerien": "🇩🇿", "Oesterreich": "🇦🇹", "Jordanien": "🇯🇴",
+    "Portugal": "🇵🇹", "DR Kongo": "🇨🇩", "England": "🏴󠁧󠁢󠁥󠁮󠁧󠁿", "Kroatien": "🇭🇷",
+    "Ghana": "🇬🇭", "Panama": "🇵🇦", "Usbekistan": "🇺🇿", "Kolumbien": "🇨🇴",
+    "Italien": "🇮🇹", "Nigeria": "🇳🇬", "Daenemark": "🇩🇰", "Polen": "🇵🇱",
+    "Wales": "🏴󠁧󠁢󠁷󠁬󠁳󠁿", "Kamerun": "🇨🇲", "Serbien": "🇷🇸", "Ukraine": "🇺🇦",
+}
 
 
 # ---------------------------------------------------------------------------
@@ -107,13 +189,24 @@ def team_name(side):
     for key in ("name", "shortName", "tla"):
         v = (side.get(key) or "").strip()
         if v:
-            return v
+            de = DE_NAMES.get(v, v)        # uebersetzen, sonst Original
+            flag = DE_FLAGS.get(de, "")    # Flagge davor, falls bekannt
+            return f"{flag} {de}".strip()
     return "TBD"
 
 
-def nice(text):
-    # GROUP_STAGE -> Group Stage, GROUP_A -> Group A
-    return " ".join(w.capitalize() for w in str(text).replace("_", " ").split())
+def stage_de(raw):
+    return DE_STAGE.get(str(raw), str(raw).replace("_", " ").title())
+
+
+def group_de(raw):
+    if not raw:
+        return ""
+    # GROUP_A -> Gruppe A
+    parts = str(raw).split("_")
+    if len(parts) == 2 and parts[0] == "GROUP":
+        return f"Gruppe {parts[1]}"
+    return str(raw).replace("_", " ").title()
 
 
 # ---------------------------------------------------------------------------
@@ -142,24 +235,18 @@ def build_ics(matches):
 
         home  = team_name(m.get("homeTeam"))
         away  = team_name(m.get("awayTeam"))
-        stage = nice(m.get("stage", ""))
-        group = nice(m.get("group", "")) if m.get("group") else ""
-        venue = (m.get("venue") or "").strip()
+        stage = stage_de(m.get("stage", ""))
+        group = group_de(m.get("group", ""))
 
-        title = f"{home} vs {away}"
+        title = f"{home} - {away}"
         tag   = group or stage
         if tag:
             title += f" ({tag})"
 
-        is_swiss = any(n in (home + " " + away).lower()
-                       for n in HIGHLIGHT_NEEDLES)
-        if is_swiss:
-            title = f"{HIGHLIGHT_EMOJI} {title}"
-
         mid = m.get("id") or f"{iso}{home}{away}"
         uid = f"wm2026-{mid}@wm-cal"
 
-        desc = " | ".join([p for p in (stage, group, venue) if p])
+        desc = " | ".join([p for p in (stage, group) if p])
 
         lines += [
             "BEGIN:VEVENT",
@@ -169,12 +256,8 @@ def build_ics(matches):
             f"DTEND:{fmt(end)}",
             fold(f"SUMMARY:{ics_escape(title)}"),
         ]
-        if venue:
-            lines.append(fold(f"LOCATION:{ics_escape(venue)}"))
         if desc:
             lines.append(fold(f"DESCRIPTION:{ics_escape(desc)}"))
-        lines.append("CATEGORIES:" +
-                     ("WM 2026,Schweiz" if is_swiss else "WM 2026"))
         lines += [
             "BEGIN:VALARM",
             "ACTION:DISPLAY",
